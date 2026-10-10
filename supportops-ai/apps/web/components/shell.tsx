@@ -60,13 +60,13 @@ export function Shell({ children }: { children: ReactNode }) {
         (deskSection
           ? deskSection.charAt(0).toUpperCase() + deskSection.slice(1)
           : "Access")
-        : pathname === "/agent"
-          ? "Agent / AgntID"
-          : pathname === "/security"
-        ? "Security / Case audit"
-        : pathname === "/demo"
-          ? "Demo lab / Backend scenarios"
-          : "Investigations / Assigned cases";
+      : pathname === "/agent"
+        ? "Agent / Workspace"
+        : pathname === "/security"
+          ? "Security / Case audit"
+          : pathname === "/demo"
+            ? "Demo lab / Backend scenarios"
+            : "Investigations / Assigned cases";
   const switchIdentity = async () => {
     setPending(true);
     setError(null);
@@ -127,9 +127,11 @@ export function Shell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto space-y-3 border-t pt-5">
           <p className="text-xs text-muted-foreground">
-            Authorization provider
+            {pathname === "/agent" ? "Acting as" : "Authorization provider"}
           </p>
-          <Badge variant="warning">AgntID unconfigured</Badge>
+          {pathname !== "/agent" && (
+            <Badge variant="warning">AgntID unconfigured</Badge>
+          )}
           <div className="flex items-center gap-3 pt-2">
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-border text-xs font-medium">
               {initials}
@@ -198,14 +200,16 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="flex min-h-16 items-center justify-between gap-4 border-b">
           <p className="truncate text-xs text-muted-foreground">{crumb}</p>
           <Badge variant="default" className="hidden sm:inline-flex">
-            Demo data · API role gate
+            {pathname === "/agent"
+              ? "Prepared requests · Demo"
+              : "Demo data · API role gate"}
           </Badge>
         </div>
         {children}
       </main>
       <nav
         aria-label="Mobile navigation"
-        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
+        className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t bg-white px-2 pb-[env(safe-area-inset-bottom)] md:hidden"
       >
         {links.map(({ href, label, icon: Icon }) => (
           <Link
