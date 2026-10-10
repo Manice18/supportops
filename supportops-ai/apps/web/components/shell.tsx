@@ -1,6 +1,7 @@
 "use client";
 import {
   ChevronDown,
+  Bot,
   FlaskConical,
   Inbox,
   LayoutGrid,
@@ -16,6 +17,7 @@ import { Button } from "./ui/button";
 import { cn, roleLabel } from "@/lib/utils";
 
 const links = [
+  { href: "/agent", label: "Agent", icon: Bot },
   { href: "/desk", label: "Desk", icon: LayoutGrid },
   { href: "/investigations", label: "Investigations", icon: Inbox },
   { href: "/security", label: "Security", icon: ShieldCheck },
@@ -58,7 +60,9 @@ export function Shell({ children }: { children: ReactNode }) {
         (deskSection
           ? deskSection.charAt(0).toUpperCase() + deskSection.slice(1)
           : "Access")
-      : pathname === "/security"
+        : pathname === "/agent"
+          ? "Agent / AgntID"
+          : pathname === "/security"
         ? "Security / Case audit"
         : pathname === "/demo"
           ? "Demo lab / Backend scenarios"

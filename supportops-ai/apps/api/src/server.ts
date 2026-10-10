@@ -13,6 +13,7 @@ import { createAuthGuards } from "./auth/guard.js";
 import "./auth/types.js";
 import type { SupportOpsRepository } from "./db/repository.js";
 import { sendError } from "./errors.js";
+import { registerAgentRoutes } from "./routes/agent.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerCaseRoutes } from "./routes/cases.js";
 import { registerDeskRoutes } from "./routes/desk.js";
@@ -90,6 +91,7 @@ export async function buildServer(options: BuildServerOptions): Promise<FastifyI
   const guards = createAuthGuards(options.repo, options.sessionSecret);
   registerHealthRoute(app, options.repo, authorization, options.demoMode);
   registerAuthRoutes(app, options.repo, guards, options.sessionSecret, options.loginRateLimit ?? 20);
+  registerAgentRoutes(app, options.repo, guards);
   registerCaseRoutes(app, options.repo, guards);
   registerDeskRoutes(app, options.repo, guards);
   registerDemoRoutes(app, guards, authorization, options.demoMode);
