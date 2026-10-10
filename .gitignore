@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build output
+dist/
+.next/
+out/
+.turbo/
+build/
+*.tsbuildinfo
+
+# Prisma client
+packages/db/src/generated/
+
+# Tests
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Secrets — keep .env.example
+.env
+.env.*
+!.env.example
+
+# OS and editor
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+
+# Local Docker overrides
+docker-compose.override.yml

@@ -1,0 +1,19 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: supportops
+      POSTGRES_PASSWORD: supportops
+      POSTGRES_DB: supportops
+    ports:
+      - "5433:5432"
+    volumes:
+      - supportops-pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supportops -d supportops"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  supportops-pg:

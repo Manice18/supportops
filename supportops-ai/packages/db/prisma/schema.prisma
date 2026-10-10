@@ -1,0 +1,548 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SUPPORT_ENGINEER
+  SUPPORT_LEAD
+  ADMIN
+  CSE_PAYG
+  CSE_ENTERPRISE
+  CSE_PAYG_SENIOR
+  CSE_ENTERPRISE_SENIOR
+}
+
+enum CustomerPlan {
+  PAYG
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELED
+}
+
+enum RefundStatus {
+  PENDING
+  ALLOWED
+  DENIED
+}
+
+enum PaymentReturnStatus {
+  SUBMITTED
+  FAILED
+}
+
+enum OrgStatus {
+  ACTIVE
+  SUSPENDED
+}
+
+enum OrgAccessRole {
+  MEMBER
+  LEAD
+}
+
+enum CaseStatus {
+  OPEN
+  INVESTIGATING
+  PENDING_APPROVAL
+  RESOLVED
+  ESCALATED
+}
+
+enum CasePriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum CallStatus {
+  COMPLETED
+  FAILED
+  IN_PROGRESS
+}
+
+enum BillingEntryType {
+  CHARGE
+  CREDIT
+  ADJUSTMENT
+}
+
+enum BillingEntryStatus {
+  POSTED
+  VOID
+  CREDITED
+}
+
+enum CreditState {
+  PROPOSED
+  APPROVED
+  APPLIED
+  REJECTED
+}
+
+enum InvestigationStatus {
+  RUNNING
+  COMPLETE
+  PARTIAL
+  NEEDS_ESCALATION
+  FAILED
+}
+
+enum EnforcementMode {
+  PROTECTED
+  BASELINE
+}
+
+enum ToolAuthorizationStatus {
+  PENDING
+  ALLOWED
+  DENIED
+  UNAVAILABLE
+  MALFORMED
+}
+
+enum ToolExecutionStatus {
+  NOT_EXECUTED
+  SUCCEEDED
+  FAILED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model User {
+  id          String   @id
+  email       String   @unique
+  displayName String
+  role        UserRole
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  organizationAccess UserOrganizationAccess[]
+  openedCases        SupportCase[]            @relation("CaseOpenedBy")
+  assignedCases      SupportCase[]            @relation("CaseAssignedTo")
+  investigations     Investigation[]
+  toolAttempts       ToolAttempt[]
+  auditEvents        AuditEvent[]
+  requestedApprovals ApprovalRequest[]        @relation("ApprovalRequestedBy")
+  reviewedApprovals  ApprovalRequest[]        @relation("ApprovalReviewedBy")
+  decidedRefunds     RefundRequest[]          @relation("RefundDecidedBy")
+  creditAdjustments  CreditAdjustment[]
+  paymentReturns     PaymentReturn[]
+}
+
+model Organization {
+  id        String    @id
+  name      String
+  plan      String
+  region    String
+  status    OrgStatus
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  members              UserOrganizationAccess[]
+  cases                SupportCase[]
+  calls                Call[]
+  axiomLogs            AxiomLog[]
+  clickHouseEvents     ClickHouseEvent[]
+  traceSpans           TraceSpan[]
+  featureFlagSnapshots FeatureFlagSnapshot[]
+  billingEntries       BillingEntry[]
+  credits              Credit[]
+  toolAttempts         ToolAttempt[]
+  auditEvents          AuditEvent[]
+  customers            Customer[]
+  subscriptions        Subscription[]
+  refundRequests       RefundRequest[]
+  creditAdjustments    CreditAdjustment[]
+  paymentReturns       PaymentReturn[]
+}
+
+model UserOrganizationAccess {
+  userId    String
+  orgId     String
+  role      OrgAccessRole
+  createdAt DateTime      @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+
+  @@id([userId, orgId])
+  @@index([orgId])
+}
+
+model SupportCase {
+  id               String       @id
+  orgId            String
+  title            String
+  description      String
+  status           CaseStatus
+  priority         CasePriority
+  openedByUserId   String
+  assignedToUserId String?
+  createdAt        DateTime
+  updatedAt        DateTime
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  openedBy     User         @relation("CaseOpenedBy", fields: [openedByUserId], references: [id], onDelete: Restrict)
+  assignedTo   User?        @relation("CaseAssignedTo", fields: [assignedToUserId], references: [id], onDelete: Restrict)
+
+  credits          Credit[]
+  refundRequests   RefundRequest[]
+  investigations   Investigation[]
+  toolAttempts     ToolAttempt[]
+  auditEvents      AuditEvent[]
+  approvalRequests ApprovalRequest[]
+
+  @@index([orgId, status])
+  @@index([assignedToUserId])
+}
+
+model Call {
+  id              String     @id
+  orgId           String
+  assistantId     String
+  startedAt       DateTime
+  endedAt         DateTime?
+  status          CallStatus
+  failureCategory String?
+  durationSeconds Int?
+  requestId       String
+  traceId         String
+  region          String
+  customerId      String?
+
+  customer         Customer?         @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  organization     Organization      @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  axiomLogs        AxiomLog[]
+  clickHouseEvents ClickHouseEvent[]
+  traceSpans       TraceSpan[]
+  billingEntries   BillingEntry[]
+
+  @@index([orgId, startedAt])
+  @@index([requestId])
+  @@index([traceId])
+}
+
+model AxiomLog {
+  id           String   @id
+  orgId        String
+  callId       String?
+  requestId    String?
+  timestamp    DateTime
+  severity     String
+  service      String
+  eventType    String
+  message      String
+  safeMetadata Json
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  call         Call?        @relation(fields: [callId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, timestamp])
+  @@index([callId])
+  @@index([requestId])
+}
+
+model ClickHouseEvent {
+  id                   String   @id
+  orgId                String
+  callId               String?
+  requestId            String
+  timestamp            DateTime
+  endpoint             String
+  statusCode           Int
+  latencyMs            Int
+  eventType            String
+  safeRequestMetadata  Json
+  safeResponseMetadata Json
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  call         Call?        @relation(fields: [callId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, timestamp])
+  @@index([requestId])
+  @@index([callId])
+}
+
+model TraceSpan {
+  id           String   @id
+  orgId        String
+  traceId      String
+  parentSpanId String?
+  callId       String?
+  service      String
+  operation    String
+  startTime    DateTime
+  durationMs   Int
+  status       String
+  attributes   Json
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  call         Call?        @relation(fields: [callId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, traceId])
+  @@index([callId])
+}
+
+model MetricSample {
+  id         String   @id
+  region     String
+  service    String
+  timestamp  DateTime
+  metricName String
+  value      Float
+  tags       Json
+
+  @@index([region, service, metricName, timestamp])
+}
+
+model FeatureFlagSnapshot {
+  id         String   @id
+  orgId      String
+  flagKey    String
+  enabled    Boolean
+  revision   Int
+  observedAt DateTime
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, flagKey, observedAt])
+}
+
+model BillingEntry {
+  id          String             @id
+  orgId       String
+  callId      String?
+  amountCents Int
+  currency    String
+  type        BillingEntryType
+  status      BillingEntryStatus
+  createdAt   DateTime
+
+  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  call         Call?            @relation(fields: [callId], references: [id], onDelete: Restrict)
+  creditLines  CreditLineItem[]
+
+  @@index([orgId, createdAt])
+  @@index([callId])
+}
+
+model Credit {
+  id             String      @id
+  orgId          String
+  supportCaseId  String
+  amountCents    Int
+  currency       String
+  reason         String
+  state          CreditState
+  idempotencyKey String      @unique
+  createdAt      DateTime
+  appliedAt      DateTime?
+
+  organization Organization     @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  supportCase  SupportCase      @relation(fields: [supportCaseId], references: [id], onDelete: Restrict)
+  lineItems    CreditLineItem[]
+
+  @@index([orgId, supportCaseId])
+}
+
+model CreditLineItem {
+  id             String @id
+  creditId       String
+  billingEntryId String
+  amountCents    Int
+
+  credit       Credit       @relation(fields: [creditId], references: [id], onDelete: Restrict)
+  billingEntry BillingEntry @relation(fields: [billingEntryId], references: [id], onDelete: Restrict)
+
+  @@unique([creditId, billingEntryId])
+  @@index([billingEntryId])
+}
+
+model Investigation {
+  id            String              @id
+  supportCaseId String
+  userId        String
+  status        InvestigationStatus
+  findings      Json?
+  startedAt     DateTime
+  finishedAt    DateTime?
+
+  supportCase  SupportCase   @relation(fields: [supportCaseId], references: [id], onDelete: Restrict)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Restrict)
+  toolAttempts ToolAttempt[]
+
+  @@index([supportCaseId])
+}
+
+model ToolAttempt {
+  id                 String                  @id
+  investigationId    String?
+  supportCaseId      String?
+  actorUserId        String
+  orgId              String
+  toolName           String
+  sanitizedArguments Json
+  mode               EnforcementMode
+  authorizationStatus ToolAuthorizationStatus
+  providerDecisionId String?
+  executed           Boolean
+  executionStatus    ToolExecutionStatus
+  reasonCode         String?
+  createdAt          DateTime
+
+  investigation Investigation? @relation(fields: [investigationId], references: [id], onDelete: Restrict)
+  supportCase   SupportCase?   @relation(fields: [supportCaseId], references: [id], onDelete: Restrict)
+  actor         User           @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  organization  Organization   @relation(fields: [orgId], references: [id], onDelete: Restrict)
+
+  @@index([orgId, createdAt])
+  @@index([supportCaseId])
+  @@index([actorUserId])
+}
+
+model AuditEvent {
+  id               String   @id
+  actorUserId      String?
+  orgId            String?
+  supportCaseId    String?
+  action           String
+  outcome          String
+  sanitizedPayload Json
+  timestamp        DateTime
+
+  actor        User?         @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  organization Organization? @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  supportCase  SupportCase?  @relation(fields: [supportCaseId], references: [id], onDelete: Restrict)
+
+  @@index([supportCaseId, timestamp])
+  @@index([orgId, timestamp])
+}
+
+model ApprovalRequest {
+  id                String         @id
+  supportCaseId     String
+  proposedAction    Json
+  status            ApprovalStatus
+  requestedByUserId String
+  reviewedByUserId  String?
+  reviewedAt        DateTime?
+  createdAt         DateTime       @default(now())
+
+  supportCase SupportCase @relation(fields: [supportCaseId], references: [id], onDelete: Restrict)
+  requestedBy User        @relation("ApprovalRequestedBy", fields: [requestedByUserId], references: [id], onDelete: Restrict)
+  reviewedBy  User?       @relation("ApprovalReviewedBy", fields: [reviewedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([supportCaseId, status])
+}
+
+model Customer {
+  id            String       @id
+  orgId         String
+  displayName   String
+  email         String
+  plan          CustomerPlan
+  region        String
+  status        String
+  paymentBrand  String
+  paymentLast4  String
+  createdAt     DateTime
+
+  organization       Organization       @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  subscriptions      Subscription[]
+  calls              Call[]
+  refundRequests     RefundRequest[]
+  creditAdjustments  CreditAdjustment[]
+  paymentReturns     PaymentReturn[]
+
+  @@index([orgId])
+}
+
+model Subscription {
+  id          String             @id
+  customerId  String
+  orgId       String
+  planName    String
+  status      SubscriptionStatus
+  amountCents Int
+  currency    String
+  renewalAt   DateTime
+
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+
+  @@index([orgId])
+  @@index([customerId])
+}
+
+model RefundRequest {
+  id               String       @id
+  orgId            String
+  customerId       String
+  supportCaseId    String?
+  amountCents      Int
+  currency         String
+  reason           String
+  status           RefundStatus
+  decidedByUserId  String?
+  decidedAt        DateTime?
+  createdAt        DateTime
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  supportCase  SupportCase? @relation(fields: [supportCaseId], references: [id], onDelete: Restrict)
+  decidedBy    User?        @relation("RefundDecidedBy", fields: [decidedByUserId], references: [id], onDelete: Restrict)
+  paymentReturn PaymentReturn?
+
+  @@index([orgId, status])
+}
+
+model CreditAdjustment {
+  id          String   @id
+  orgId       String
+  customerId  String
+  amountCents Int
+  reason      String
+  actorUserId String
+  createdAt   DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  customer     Customer     @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  actor        User         @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+
+  @@index([customerId, createdAt])
+}
+
+model PaymentReturn {
+  id                 String              @id
+  orgId              String
+  refundRequestId    String              @unique
+  customerId         String
+  amountCents        Int
+  currency           String
+  provider           String
+  providerReference  String
+  status             PaymentReturnStatus
+  submittedByUserId  String
+  createdAt          DateTime            @default(now())
+
+  organization Organization  @relation(fields: [orgId], references: [id], onDelete: Restrict)
+  refundRequest RefundRequest @relation(fields: [refundRequestId], references: [id], onDelete: Restrict)
+  customer     Customer      @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  submittedBy  User          @relation(fields: [submittedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([orgId])
+}
