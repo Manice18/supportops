@@ -4,6 +4,34 @@ Support desk demo. Engineers sign in, work tickets, and ask an agent to call too
 
 The AgntID runtime lives at the repository root. The desk lives in `supportops-ai/`.
 
+## Designs
+
+The editable designs live in the [AgnId workspace in Paper](https://app.paper.design/file/01KT7SP5V66SGQ31X7SJFEHRGT/1-0). The workspace includes:
+
+- [Platform and agent screens](https://app.paper.design/file/01KT7SP5V66SGQ31X7SJFEHRGT/1-0)
+- [Design system](https://app.paper.design/file/01KT7SP5V66SGQ31X7SJFEHRGT/p-2-0)
+- [Six-slide pitch deck](https://app.paper.design/file/01KT7SP5V66SGQ31X7SJFEHRGT/p-3-0)
+
+The images below are Paper design previews using synthetic demo data. They show the intended interface; the running app may differ.
+
+### Incident investigation
+
+Correlated evidence, incident findings, and credit calculations for the Northwind 47-call scenario.
+
+![SupportOps investigation design showing incident findings, correlated evidence, and a credit summary](docs/images/investigation-design.jpg)
+
+### Agent workspace
+
+An illustrative allowed tool call showing the policy decision, execution status, and returned evidence.
+
+![SupportOps agent design showing an allowed tool call and its execution details](docs/images/agent-design.jpg)
+
+### Pitch deck
+
+Six slides covering the product, the incident workflow, AgntID authorization, and a proposed pilot.
+
+![SupportOps AI pitch deck cover with the headline AI support with a policy boundary](docs/images/pitch-deck.jpg)
+
 ## Start
 
 Node 22 or newer, pnpm 10, and Docker.
